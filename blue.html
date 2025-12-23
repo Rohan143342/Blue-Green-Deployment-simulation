@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blue Form - Blue-Green Deployment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+        }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        input[type="text"],
+        input[type="email"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="badge">BLUE VERSION</span>
+        <h1>Contact Form</h1>
+        <form id="contactForm">
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="message">Message:</label>
+                <textarea id="message" name="message" required></textarea>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+        <div class="info">
+            <strong>Blue Deployment Active</strong><br>
+            This is the blue version of the application.
+        </div>
+    </div>
+    <script>
+        // Track multiple tabs using localStorage with heartbeat
+        (function() {
+            const tabKey = 'blue-green-tabs';
+            const heartbeatKey = 'blue-green-heartbeat';
+            const tabId = 'tab-' + Date.now() + '-' + Math.random();
+            const HEARTBEAT_INTERVAL = 500; // Update every 500ms
+            const STALE_TIMEOUT = 2000; // Tab is stale after 2 seconds
+            
+            // Clean up stale tabs
+            function cleanupStaleTabs() {
+                const now = Date.now();
+                const heartbeat = JSON.parse(localStorage.getItem(heartbeatKey) || '{}');
+                const activeTabs = [];
+                
+                for (const [id, timestamp] of Object.entries(heartbeat)) {
+                    if (now - timestamp < STALE_TIMEOUT) {
+                        activeTabs.push(id);
+                    }
+                }
+                
+                // Update heartbeat with only active tabs
+                const newHeartbeat = {};
+                activeTabs.forEach(id => {
+                    newHeartbeat[id] = heartbeat[id];
+                });
+                localStorage.setItem(heartbeatKey, JSON.stringify(newHeartbeat));
+                
+                return activeTabs.length;
+            }
+            
+            // Send heartbeat
+            function sendHeartbeat() {
+                const heartbeat = JSON.parse(localStorage.getItem(heartbeatKey) || '{}');
+                heartbeat[tabId] = Date.now();
+                localStorage.setItem(heartbeatKey, JSON.stringify(heartbeat));
+            }
+            
+            // Check active tabs and redirect if needed
+            function checkTabs() {
+                const activeTabCount = cleanupStaleTabs();
+                
+                if (activeTabCount > 1) {
+                    // Multiple tabs detected, redirect to green
+                    window.location.href = '/green.html';
+                }
+            }
+            
+            // Initial heartbeat
+            sendHeartbeat();
+            
+            // Send heartbeat periodically
+            const heartbeatInterval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+            
+            // Check for multiple tabs periodically
+            const checkInterval = setInterval(checkTabs, 1000);
+            
+            // Clean up on page unload
+            window.addEventListener('beforeunload', function() {
+                clearInterval(heartbeatInterval);
+                clearInterval(checkInterval);
+                const heartbeat = JSON.parse(localStorage.getItem(heartbeatKey) || '{}');
+                delete heartbeat[tabId];
+                if (Object.keys(heartbeat).length === 0) {
+                    localStorage.removeItem(heartbeatKey);
+                } else {
+                    localStorage.setItem(heartbeatKey, JSON.stringify(heartbeat));
+                }
+            });
+            
+            // Listen for changes from other tabs
+            window.addEventListener('storage', function(e) {
+                if (e.key === heartbeatKey) {
+                    checkTabs();
+                }
+            });
+            
+            // Initial check
+            setTimeout(checkTabs, 300);
+        })();
+        
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Form submitted from Blue version!');
+        });
+    </script>
+</body>
+</html>
+

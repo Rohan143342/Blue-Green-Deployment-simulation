@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  blue-green-app:
+    build: .
+    container_name: blue-green-deployment
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    networks:
+      - blue-green-network
+
+networks:
+  blue-green-network:
+    driver: bridge
+
